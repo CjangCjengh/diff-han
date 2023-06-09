@@ -1,0 +1,18 @@
+{
+    "dropout": 0.1,
+    "num_tokens": 296,
+    "diffusion_steps": 1000,
+    "noise_schedule": "linear",
+    "image_size": 128,
+    "num_channels": 128,
+    "num_res_blocks": 3,
+    "batch_size": 5,
+    "attention_resolutions": "40, 20, 10",
+    "use_ddim": true,
+    "timestep_respacing": "ddim25",
+    "model_path": "./trained_models/model001000.pt",
+    "gen_txt_file": "./gen_ids.txt",
+    "img_save_path": "./result",
+    "ids_path": "./han_ids.txt",
+    "glyph_path": "./glyphs.json"
+}

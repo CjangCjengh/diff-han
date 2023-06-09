@@ -1,0 +1,18 @@
+{
+    "data_dir": "./font_img",
+    "num_tokens": 296,
+    "diffusion_steps": 1000,
+    "noise_schedule": "linear",
+    "image_size": 128,
+    "num_channels": 128,
+    "num_res_blocks": 3,
+    "lr": 0.0001,
+    "batch_size": 16,
+    "log_interval": 250,
+    "save_interval": 1000,
+    "train_step": 420000,
+    "attention_resolutions": "40, 20, 10",
+    "model_save_dir": "./trained_models",
+    "ids_path": "./han_ids.txt",
+    "glyph_path": "./glyphs.json"
+}

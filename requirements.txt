@@ -1,0 +1,8 @@
+torch
+tqdm
+opencv-python
+sklearn
+pillow
+tensorboardX
+mpi4py
+json
