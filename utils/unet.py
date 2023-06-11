@@ -416,7 +416,7 @@ class UNetWithStyEncoderModel(nn.Module):
             linear(time_embed_dim, time_embed_dim),
         )
 
-        self.ids_encoder = IdsEncoder(num_tokens, time_embed_dim)
+        self.ids_encoder = IdsEncoder(num_tokens+3, time_embed_dim)
 
         ch = input_ch = int(channel_mult[0] * model_channels)
         self.input_blocks = nn.ModuleList(
@@ -569,9 +569,12 @@ class UNetWithStyEncoderModel(nn.Module):
     def forward(self, x, timesteps, ids):
         hs = []
         emb = self.time_embed(timestep_embedding(timesteps, self.model_channels))
-        ids_emb = [torch.tensor([int(j) for j in i.split(',')]).to(dist_util.dev()) for i in ids]
-        ids_emb = [self.ids_encoder(i) for i in ids_emb]
+        ids_emb = [[int(j) for j in i.split(',')] for i in ids]
+        max_len = max([len(i) for i in ids_emb])
+        ids_emb = [torch.tensor(i + [1] * (max_len - len(i))).to(dist_util.dev()) for i in ids_emb]
         ids_emb = torch.stack(ids_emb)
+        ids_emb = self.ids_encoder(ids_emb)
+
         emb = emb + ids_emb
 
         h = x.type(self.dtype)

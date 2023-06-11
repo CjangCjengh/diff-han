@@ -6,7 +6,7 @@ import pathlib
 import argparse
 from fontTools.ttLib import TTFont
 
-def get_char_list_from_ttf(font_file):
+def get_char_list_from_font(font_file):
     f_obj = TTFont(font_file)
     m_dict = f_obj.getBestCmap()
     
@@ -27,8 +27,8 @@ def draw_single_char(ch, font, canvas_size):
     return img
 
 if __name__ == '__main__':
-    parser = argparse.ArgumentParser(description='Obtaining characters from .ttf')
-    parser.add_argument('--ttf_path', type=str, default='../ttf_folder',help='ttf directory')
+    parser = argparse.ArgumentParser(description='Obtaining characters from fonts')
+    parser.add_argument('--font_path', type=str, default='../font_folder',help='font directory')
     parser.add_argument('--save_path', type=str, default='../save_folder',help='images directory')
     parser.add_argument('--img_size', type=int, help='The size of generated images')
     parser.add_argument('--chara_size', type=int, help='The size of generated characters')
@@ -50,7 +50,7 @@ if __name__ == '__main__':
         print("{} / {} ".format(idx, total_num), item)
         src_font = ImageFont.truetype(item, size=args.chara_size)
         font_name = os.path.basename(item).split('.')[0]
-        chars = get_char_list_from_ttf(item)
+        chars = get_char_list_from_font(item)
         
         for char in chars:
             try:

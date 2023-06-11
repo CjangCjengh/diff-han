@@ -13,6 +13,6 @@ class IdsEncoder(nn.Module):
         e = self.embedding_layer(x)
         a, _ = self.attention_layer(e, e, e)
         b = self.linear_layer(a)
-        v = torch.mean(b, dim=0)
+        v = torch.mean(b, dim=1)
         return v
 

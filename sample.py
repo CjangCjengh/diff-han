@@ -62,7 +62,7 @@ def main():
     with open(cfg['glyph_path'], 'r', encoding='utf-8') as f:
         glyphs = json.load(f)
     for idx, glyph in enumerate(glyphs):
-        glyph_dict[glyph] = idx
+        glyph_dict[glyph] = idx + 3
 
     ids_dict = {}
     with open(cfg['ids_path'], 'r', encoding='utf-8') as f:
@@ -88,9 +88,8 @@ def main():
                 ids=new_ids
                 new_ids=divide(ids)
             ids = [glyph_dict[c] if c in glyph_dict else glyph_dict['？'] for c in ids]
+            ids = [0] + ids + [2]
             ids_seqs.append(str(ids)[1:-1])
-
-    all_images = []
 
     ch_idx = 0
     while ch_idx < len(ids_seqs):

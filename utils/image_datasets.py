@@ -16,13 +16,14 @@ def load_ids_dict(ids_path, glyph_path):
         glyphs = json.load(f)
     glyph_dict = {}
     for idx, glyph in enumerate(glyphs):
-        glyph_dict[glyph] = idx
+        glyph_dict[glyph] = idx + 3
 
     ids_dict = {}
     with open(ids_path, 'r', encoding='utf-8') as f:
         for line in f.readlines():
             char, ids = line.strip().split('\t')
             ids = [glyph_dict[c] for c in ids]
+            ids = [0] + ids + [2]
             ids_dict[char] = ids
     return ids_dict
 
