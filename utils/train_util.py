@@ -120,7 +120,7 @@ class TrainLoop:
             model_state = dist_util.load_state_dict(
                 resume_checkpoint, map_location=dist_util.dev()
             )
-            self.model.load_state_dict(model_state)
+            self.model.load_state_dict(model_state, strict=False)
 
 
     def _load_ema_parameters(self, rate):

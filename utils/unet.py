@@ -18,7 +18,7 @@ from .nn import (
     normalization,
     timestep_embedding,
 )
-from .ids_encoder import IdsEncoder
+from .text_encoder import TextEncoder
 
 
 class AttentionPool2d(nn.Module):
@@ -416,7 +416,7 @@ class UNetWithStyEncoderModel(nn.Module):
             linear(time_embed_dim, time_embed_dim),
         )
 
-        self.ids_encoder = IdsEncoder(num_tokens+3, time_embed_dim)
+        self.text_encoder = TextEncoder(num_tokens + 3, time_embed_dim)
 
         ch = input_ch = int(channel_mult[0] * model_channels)
         self.input_blocks = nn.ModuleList(
@@ -569,13 +569,15 @@ class UNetWithStyEncoderModel(nn.Module):
     def forward(self, x, timesteps, ids):
         hs = []
         emb = self.time_embed(timestep_embedding(timesteps, self.model_channels))
-        ids_emb = [[int(j) for j in i.split(',')] for i in ids]
-        max_len = max([len(i) for i in ids_emb])
-        ids_emb = [torch.tensor(i + [1] * (max_len - len(i))).to(dist_util.dev()) for i in ids_emb]
-        ids_emb = torch.stack(ids_emb)
-        ids_emb = self.ids_encoder(ids_emb)
+        txt_emb = [[int(j) for j in i.split(',')] for i in ids]
+        txt_length = torch.tensor([len(i) for i in txt_emb]).to(dist_util.dev())
+        max_len = max(txt_length)
+        txt_emb = [torch.tensor(i + [1] * (max_len - len(i))).to(dist_util.dev()) for i in txt_emb]
+        txt_emb = torch.stack(txt_emb)
+        txt_emb = self.text_encoder(txt_emb, txt_length)
+        txt_emb = torch.mean(txt_emb, dim=2)
 
-        emb = emb + ids_emb
+        emb = emb + txt_emb
 
         h = x.type(self.dtype)
         for module in self.input_blocks:

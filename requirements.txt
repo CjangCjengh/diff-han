@@ -5,4 +5,5 @@ sklearn
 pillow
 tensorboardX
 mpi4py
+fontTools
 json

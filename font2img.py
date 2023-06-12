@@ -1,5 +1,4 @@
 from PIL import Image,ImageDraw,ImageFont
-import matplotlib.pyplot as plt
 import os
 import numpy as np
 import pathlib
@@ -34,7 +33,7 @@ if __name__ == '__main__':
     parser.add_argument('--chara_size', type=int, help='The size of generated characters')
     args = parser.parse_args()
 
-    data_dir = args.ttf_path
+    data_dir = args.font_path
     data_root = pathlib.Path(data_dir)
 
     all_image_paths = list(data_root.glob('*.[to]tf'))

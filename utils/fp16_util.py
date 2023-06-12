@@ -105,7 +105,7 @@ def state_dict_to_master_params(model, state_dict, use_fp16):
         param_groups_and_shapes = get_param_groups_and_shapes(named_model_params)
         master_params = make_master_params(param_groups_and_shapes)
     else:
-        master_params = [state_dict[name] for name, _ in model.named_parameters()]
+        master_params = [state_dict[name] if name in state_dict else _ for name, _ in model.named_parameters()]
     return master_params
 
 
