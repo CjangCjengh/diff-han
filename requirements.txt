@@ -1,9 +1,8 @@
 torch
 tqdm
 opencv-python
-sklearn
+scikit-learn
 pillow
 tensorboardX
 mpi4py
 fontTools
-json

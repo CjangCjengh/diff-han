@@ -1,6 +1,6 @@
 {
     "dropout": 0.1,
-    "num_tokens": 296,
+    "num_tokens": 445,
     "diffusion_steps": 1000,
     "noise_schedule": "linear",
     "image_size": 128,

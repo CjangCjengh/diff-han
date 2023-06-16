@@ -11,6 +11,7 @@ from utils.script_util import (
     args_to_dict,
     create_model_and_diffusion,
 )
+from utils.ids_encoder import IDSEncoder
 from PIL import Image
 import json
 
@@ -57,51 +58,30 @@ def main():
     logger.log("sampling...")
     noise = None
 
-    # gen txt
-    glyph_dict = {}
-    with open(cfg['glyph_path'], 'r', encoding='utf-8') as f:
-        glyphs = json.load(f)
-    for idx, glyph in enumerate(glyphs):
-        glyph_dict[glyph] = idx + 3
-
-    ids_dict = {}
-    with open(cfg['ids_path'], 'r', encoding='utf-8') as f:
-        for line in f.readlines():
-            char, ids = line.strip().split('\t')
-            ids_dict[char] = ids
-
-    def divide(ids):
-        new_ids=''
-        for c in ids:
-            if c in ids_dict:
-                new_ids+=ids_dict[c]
-            else:
-                new_ids+=c
-        return new_ids
-    
-    ids_seqs = []
+    ids_encoder = IDSEncoder(cfg['ids_path'], cfg['glyph_path'])
+    y = []
+    y_mask = []
     with open(gen_txt_file, 'r') as f:
         for ids in f.readlines():
             ids = ids.strip()
-            new_ids=divide(ids)
-            while new_ids!=ids:
-                ids=new_ids
-                new_ids=divide(ids)
-            ids = [glyph_dict[c] if c in glyph_dict else glyph_dict['？'] for c in ids]
-            ids = [0] + ids + [2]
-            ids_seqs.append(str(ids)[1:-1])
+            arr, sign = ids_encoder.encode_ids(ids)
+            y.append(arr)
+            y_mask.append(sign)
+    y = np.array(y)
+    y_mask = np.array(y_mask)
 
     ch_idx = 0
-    while ch_idx < len(ids_seqs):
+    while ch_idx < len(y):
         model_kwargs = {}
-        model_kwargs["ids"] = ids_seqs[ch_idx:ch_idx+batch_size]
+        model_kwargs['y'] = y[ch_idx:ch_idx+batch_size]
+        model_kwargs['y_mask'] = y_mask[ch_idx:ch_idx+batch_size]
 
         sample_fn = (
             diffusion.p_sample_loop if not cfg['use_ddim'] else diffusion.ddim_sample_loop
         )
         sample = sample_fn(
             model,
-            (len(model_kwargs["ids"]), 3, cfg['image_size'], cfg['image_size']),
+            (len(model_kwargs['y']), 3, cfg['image_size'], cfg['image_size']),
             clip_denoised=cfg['clip_denoised'],
             model_kwargs=model_kwargs,
             device=dist_util.dev(),

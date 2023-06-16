@@ -1,4 +1,5 @@
 import os
+import re
 import math
 import random
 import json
@@ -6,26 +7,10 @@ import json
 from PIL import Image
 from mpi4py import MPI
 import numpy as np
+import torch
 from torch.utils.data import DataLoader, Dataset
 from . import logger
-
-
-def load_ids_dict(ids_path, glyph_path):
-    logger.log("loading IDS data...")
-    with open(glyph_path, 'r', encoding='utf-8') as f:
-        glyphs = json.load(f)
-    glyph_dict = {}
-    for idx, glyph in enumerate(glyphs):
-        glyph_dict[glyph] = idx + 3
-
-    ids_dict = {}
-    with open(ids_path, 'r', encoding='utf-8') as f:
-        for line in f.readlines():
-            char, ids = line.strip().split('\t')
-            ids = [glyph_dict[c] for c in ids]
-            ids = [0] + ids + [2]
-            ids_dict[char] = ids
-    return ids_dict
+from .ids_encoder import IDSEncoder
 
 
 def load_data(
@@ -36,13 +21,16 @@ def load_data(
     deterministic=False,
     random_crop=False,
     random_flip=False,
-    ids_dict=None,
+    ids_path=None,
+    glyph_path=None,
 ):
     if not data_dir:
         raise ValueError("unspecified data directory")
     
+    ids_encoder = IDSEncoder(ids_path, glyph_path, 128)
+    
     all_files = _list_image_files_recursively(data_dir)
-    all_files = [f for f in all_files if chr(int(os.path.basename(f).split('.')[0], 16)) in ids_dict]
+    all_files = [f for f in all_files if chr(int(os.path.basename(f).split('.')[0], 16)) in ids_encoder.ids_dict]
 
     dataset = ImageDataset(
         image_size,
@@ -51,15 +39,39 @@ def load_data(
         num_shards=MPI.COMM_WORLD.Get_size(),
         random_crop=random_crop,
         random_flip=random_flip,
-        ids_dict=ids_dict,
+        ids_encoder=ids_encoder,
     )
+
+    def collate_fn(batch):
+        arr_list = []
+        y_list = []
+        y_mask_list = []
+        max_len = max([len(y) for arr, y, y_mask in batch])
+        for arr, y, y_mask in batch:
+            arr_list.append(arr)
+            if max_len > len(y):
+                temp = np.zeros((max_len - len(y), y.shape[1], y.shape[2]), dtype=int)
+                y_list.append(np.concatenate((y, temp), axis=0))
+                y_mask_list.append(np.concatenate((y_mask, temp), axis=0))
+            else:
+                y_list.append(y)
+                y_mask_list.append(y_mask)
+        arr = np.stack(arr_list)
+        y = np.stack(y_list)
+        y_mask = np.stack(y_mask_list)
+        arr = torch.from_numpy(arr)
+        out_dict = {}
+        out_dict['y'] = torch.from_numpy(y)
+        out_dict['y_mask'] = torch.from_numpy(y_mask)
+        return arr, out_dict
+
     if deterministic:
         loader = DataLoader(
-            dataset, batch_size=batch_size, shuffle=False, num_workers=1, drop_last=True
+            dataset, batch_size=batch_size, shuffle=False, num_workers=1, drop_last=True, collate_fn=collate_fn
         )
     else:
         loader = DataLoader(
-            dataset, batch_size=batch_size, shuffle=True, num_workers=1, drop_last=True
+            dataset, batch_size=batch_size, shuffle=True, num_workers=1, drop_last=True, collate_fn=collate_fn
         )
     while True:
         yield from loader
@@ -86,14 +98,14 @@ class ImageDataset(Dataset):
         num_shards=1,
         random_crop=False,
         random_flip=True,
-        ids_dict=None,
+        ids_encoder=None,
     ):
         super().__init__()
         self.resolution = resolution
         self.local_images = image_paths[shard:][::num_shards]
         self.random_crop = random_crop
         self.random_flip = random_flip
-        self.ids_dict = ids_dict
+        self.ids_encoder = ids_encoder
 
     def __len__(self):
         return len(self.local_images)
@@ -114,12 +126,9 @@ class ImageDataset(Dataset):
             arr = arr[:, ::-1]
 
         arr = arr.astype(np.float32) / 127.5 - 1
+        y, y_mask = self.ids_encoder.encode_char(chr(int(os.path.basename(path).split('.')[0], 16)))
 
-        out_dict = {}
-        char = chr(int(os.path.basename(path).split('.')[0], 16))
-        out_dict['ids'] = str(self.ids_dict[char])[1:-1]
-
-        return np.transpose(arr, [2, 0, 1]), out_dict
+        return np.transpose(arr, [2, 0, 1]), y, y_mask
 
 
 def center_crop_arr(pil_image, image_size):
