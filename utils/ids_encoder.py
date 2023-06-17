@@ -253,14 +253,14 @@ class SplicedChar:
             point1 = (int(boundary[0][0]-0.5), int(boundary[0][1]-0.5))
             point2 = (int(boundary[1][0]-0.5), int(boundary[1][1]-0.5))
             if point1[0] == point2[0]:
-                temp[:, point1[1]:point2[1], point1[0]:point1[0]+2] = 1
+                temp[:, point1[1]:point2[1], point1[0]] = 1
             else:
-                temp[:, point1[1]:point1[1]+2, point1[0]:point2[0]] = 1
+                temp[:, point1[1], point1[0]:point2[0]] = 1
         self.sign = np.concatenate((self.sign, temp), axis=0)
 
 
 class IDSEncoder:
-    def __init__(self, ids_path, glyph_path, tensor_size=48):
+    def __init__(self, ids_path, glyph_path, tensor_size=32):
         self.tensor_size = tensor_size
 
         with open(glyph_path, 'r', encoding='utf-8') as f:
