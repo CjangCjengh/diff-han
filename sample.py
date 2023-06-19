@@ -57,12 +57,11 @@ def main():
     logger.log("sampling...")
     noise = None
 
-    # gen txt
     glyph_dict = {}
     with open(cfg['glyph_path'], 'r', encoding='utf-8') as f:
         glyphs = json.load(f)
     for idx, glyph in enumerate(glyphs):
-        glyph_dict[glyph] = idx + 3
+        glyph_dict[glyph] = idx + 1
 
     ids_dict = {}
     with open(cfg['ids_path'], 'r', encoding='utf-8') as f:
@@ -78,30 +77,27 @@ def main():
             else:
                 new_ids+=c
         return new_ids
-    
+
     ids_seqs = []
     with open(gen_txt_file, 'r') as f:
         for ids in f.readlines():
             ids = ids.strip()
-            new_ids=divide(ids)
-            while new_ids!=ids:
-                ids=new_ids
-                new_ids=divide(ids)
-            ids = [glyph_dict[c] if c in glyph_dict else glyph_dict['？'] for c in ids]
-            ids = [0] + ids + [2]
-            ids_seqs.append(str(ids)[1:-1])
+            ids = [glyph_dict[c] if c in glyph_dict else glyph_dict['？'] for c in divide(ids)]
+            ids += [0]*(77-len(ids))
+            ids_seqs.append(np.array(ids))
 
     ch_idx = 0
     while ch_idx < len(ids_seqs):
         model_kwargs = {}
-        model_kwargs["ids"] = ids_seqs[ch_idx:ch_idx+batch_size]
+        model_kwargs['ids'] = ids_seqs[ch_idx:ch_idx+batch_size]
+        model_kwargs['ids'] = torch.from_numpy(np.stack(model_kwargs['ids'])).to(dist_util.dev())
 
         sample_fn = (
             diffusion.p_sample_loop if not cfg['use_ddim'] else diffusion.ddim_sample_loop
         )
         sample = sample_fn(
             model,
-            (len(model_kwargs["ids"]), 3, cfg['image_size'], cfg['image_size']),
+            (len(model_kwargs['ids']), 3, cfg['image_size'], cfg['image_size']),
             clip_denoised=cfg['clip_denoised'],
             model_kwargs=model_kwargs,
             device=dist_util.dev(),
