@@ -20,7 +20,7 @@ def diffusion_defaults():
 def model_and_diffusion_defaults():
 
     res = dict(
-        image_size=128,
+        image_size=64,
         num_channels=128,
         num_res_blocks=2,
         num_heads=4,
@@ -34,6 +34,7 @@ def model_and_diffusion_defaults():
         resblock_updown=False,
         use_fp16=False,
         use_new_attention_order=False,
+        num_tokens=296,
     )
     res.update(diffusion_defaults())
     return res
@@ -44,7 +45,6 @@ def create_model_and_diffusion(
     num_channels,
     num_res_blocks,
     num_tokens,
-    num_features,
     channel_mult,
     num_heads,
     num_head_channels,
@@ -69,7 +69,6 @@ def create_model_and_diffusion(
         num_channels,
         num_res_blocks,
         num_tokens,
-        num_features,
         channel_mult=channel_mult,
         learn_sigma=learn_sigma,
         use_checkpoint=use_checkpoint,
@@ -100,7 +99,6 @@ def create_model(
     num_channels,
     num_res_blocks,
     num_tokens,
-    num_features,
     channel_mult="",
     learn_sigma=False,
     use_checkpoint=False,
@@ -139,7 +137,6 @@ def create_model(
         out_channels=(3 if not learn_sigma else 6),
         num_res_blocks=num_res_blocks,
         num_tokens=num_tokens,
-        num_features=num_features,
         attention_resolutions=tuple(attention_ds),
         dropout=dropout,
         channel_mult=channel_mult,

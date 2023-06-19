@@ -18,7 +18,7 @@ from .nn import (
     normalization,
     timestep_embedding,
 )
-from .content_encoder import ContentEncoder
+from .text_encoder import TextEncoder
 
 
 class AttentionPool2d(nn.Module):
@@ -375,7 +375,6 @@ class UNetWithStyEncoderModel(nn.Module):
             out_channels,
             num_res_blocks,
             num_tokens,
-            num_features,
             attention_resolutions,
             dropout=0,
             channel_mult=(1, 2, 4, 8),
@@ -400,7 +399,6 @@ class UNetWithStyEncoderModel(nn.Module):
         self.model_channels = model_channels
         self.out_channels = out_channels
         self.num_res_blocks = num_res_blocks
-        self.num_features = num_features
         self.attention_resolutions = attention_resolutions
         self.dropout = dropout
         self.channel_mult = channel_mult
@@ -418,8 +416,7 @@ class UNetWithStyEncoderModel(nn.Module):
             linear(time_embed_dim, time_embed_dim),
         )
 
-        self.emb = nn.Embedding(num_tokens + 1, num_features)
-        self.content_encoder = ContentEncoder(num_features, model_channels, 2, 'in', 'relu', 'reflect')
+        self.text_encoder = TextEncoder(num_tokens + 3, time_embed_dim)
 
         ch = input_ch = int(channel_mult[0] * model_channels)
         self.input_blocks = nn.ModuleList(
@@ -569,31 +566,26 @@ class UNetWithStyEncoderModel(nn.Module):
         self.middle_block.apply(convert_module_to_f32)
         self.output_blocks.apply(convert_module_to_f32)
 
-    def forward(self, x, timesteps, y, y_mask):
+    def forward(self, x, timesteps, ids):
         hs = []
         emb = self.time_embed(timestep_embedding(timesteps, self.model_channels))
-        y_emb = self.emb(y)
-        y_mask = y_mask.unsqueeze(-1).repeat(1, 1, 1, 1, self.num_features)
-        y_emb = y_emb * y_mask
-        y_emb = y_emb.sum(1)
-        y_emb = y_emb.permute(0, 3, 1, 2).contiguous()
-        img_embs = self.content_encoder(y_emb)
+        txt_emb = [[int(j) for j in i.split(',')] for i in ids]
+        txt_length = torch.tensor([len(i) for i in txt_emb]).to(dist_util.dev())
+        max_len = max(txt_length)
+        txt_emb = [torch.tensor(i + [1] * (max_len - len(i))).to(dist_util.dev()) for i in txt_emb]
+        txt_emb = torch.stack(txt_emb)
+        txt_emb = self.text_encoder(txt_emb, txt_length)
+        txt_emb = torch.mean(txt_emb, dim=2)
+
+        emb = emb + txt_emb
 
         h = x.type(self.dtype)
         for module in self.input_blocks:
             h = module(h, emb)
-            for img_emb in img_embs:
-                if h.shape == img_emb.shape:
-                    h = h + img_emb
-                    break
             hs.append(h)
         h = self.middle_block(h, emb)
         for module in self.output_blocks:
             h = torch.cat([h, hs.pop()], dim=1)
             h = module(h, emb)
-            for img_emb in img_embs:
-                if h.shape == img_emb.shape:
-                    h = h + img_emb
-                    break
         h = h.type(x.dtype)
         return self.out(h)  # zt_theta

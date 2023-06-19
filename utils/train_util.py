@@ -26,6 +26,7 @@ class TrainLoop:
         model,
         diffusion,
         data,
+        ids_dict,
         batch_size,
         microbatch,
         lr,
@@ -42,6 +43,7 @@ class TrainLoop:
         self.model = model
         self.diffusion = diffusion
         self.data = data
+        self.ids_dict = ids_dict
         self.batch_size = batch_size
         self.microbatch = microbatch if microbatch > 0 else batch_size
         self.lr = lr

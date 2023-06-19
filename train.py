@@ -1,7 +1,7 @@
 import os
 import argparse
 from utils import dist_util, logger
-from utils.image_datasets import load_data
+from utils.image_datasets import load_data, load_ids_dict
 from utils.resample import create_named_schedule_sampler
 from utils.script_util import (
     model_and_diffusion_defaults,
@@ -42,12 +42,12 @@ def main():
 
 
     logger.log("creating data loader...")
+    ids_dict = load_ids_dict(ids_path, glyph_path)
     data = load_data(
         data_dir=cfg['data_dir'],
         batch_size=cfg['batch_size'],
         image_size=cfg['image_size'],
-        ids_path=ids_path,
-        glyph_path=glyph_path,
+        ids_dict=ids_dict,
     )
     
     logger.log("training...")
@@ -55,6 +55,7 @@ def main():
         model=model,
         diffusion=diffusion,
         data=data,
+        ids_dict=ids_dict,
         batch_size=cfg['batch_size'],
         microbatch=cfg['microbatch'],
         lr=cfg['lr'],
