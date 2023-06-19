@@ -18,7 +18,7 @@ from .nn import (
     normalization,
     timestep_embedding,
 )
-from .text_encoder import TextEncoder
+from .text_encoder import CLIP
 
 
 class AttentionPool2d(nn.Module):
@@ -416,7 +416,7 @@ class UNetWithStyEncoderModel(nn.Module):
             linear(time_embed_dim, time_embed_dim),
         )
 
-        self.text_encoder = TextEncoder(num_tokens + 3, time_embed_dim)
+        self.text_encoder = CLIP(time_embed_dim, 77, num_tokens+1, time_embed_dim, 8, 6)
 
         ch = input_ch = int(channel_mult[0] * model_channels)
         self.input_blocks = nn.ModuleList(
@@ -569,13 +569,7 @@ class UNetWithStyEncoderModel(nn.Module):
     def forward(self, x, timesteps, ids):
         hs = []
         emb = self.time_embed(timestep_embedding(timesteps, self.model_channels))
-        txt_emb = [[int(j) for j in i.split(',')] for i in ids]
-        txt_length = torch.tensor([len(i) for i in txt_emb]).to(dist_util.dev())
-        max_len = max(txt_length)
-        txt_emb = [torch.tensor(i + [1] * (max_len - len(i))).to(dist_util.dev()) for i in txt_emb]
-        txt_emb = torch.stack(txt_emb)
-        txt_emb = self.text_encoder(txt_emb, txt_length)
-        txt_emb = torch.mean(txt_emb, dim=2)
+        txt_emb = self.text_encoder(ids)
 
         emb = emb + txt_emb
 

@@ -6,6 +6,7 @@ import json
 from PIL import Image
 from mpi4py import MPI
 import numpy as np
+import torch
 from torch.utils.data import DataLoader, Dataset
 from . import logger
 
@@ -16,15 +17,13 @@ def load_ids_dict(ids_path, glyph_path):
         glyphs = json.load(f)
     glyph_dict = {}
     for idx, glyph in enumerate(glyphs):
-        glyph_dict[glyph] = idx + 3
+        glyph_dict[glyph] = idx + 1
 
     ids_dict = {}
     with open(ids_path, 'r', encoding='utf-8') as f:
         for line in f.readlines():
             char, ids = line.strip().split('\t')
-            ids = [glyph_dict[c] for c in ids]
-            ids = [0] + ids + [2]
-            ids_dict[char] = ids
+            ids_dict[char] = [glyph_dict[c] for c in ids]
     return ids_dict
 
 
@@ -55,11 +54,11 @@ def load_data(
     )
     if deterministic:
         loader = DataLoader(
-            dataset, batch_size=batch_size, shuffle=False, num_workers=1, drop_last=True
+            dataset, batch_size=batch_size, shuffle=False, num_workers=1, drop_last=True, collate_fn=dataset.collate_fn
         )
     else:
         loader = DataLoader(
-            dataset, batch_size=batch_size, shuffle=True, num_workers=1, drop_last=True
+            dataset, batch_size=batch_size, shuffle=True, num_workers=1, drop_last=True,  collate_fn=dataset.collate_fn
         )
     while True:
         yield from loader
@@ -115,11 +114,23 @@ class ImageDataset(Dataset):
 
         arr = arr.astype(np.float32) / 127.5 - 1
 
-        out_dict = {}
         char = chr(int(os.path.basename(path).split('.')[0], 16))
-        out_dict['ids'] = str(self.ids_dict[char])[1:-1]
 
-        return np.transpose(arr, [2, 0, 1]), out_dict
+        return np.transpose(arr, [2, 0, 1]), self.ids_dict[char]
+    
+    def collate_fn(self, batch):
+        images = []
+        out_dict = {}
+        out_dict['ids'] = []
+        for image, ids in batch:
+            images.append(image)
+            ids = ids + [0] * (77 - len(ids))
+            out_dict['ids'].append(ids)
+        images = np.stack(images, axis=0)
+        out_dict['ids'] = np.stack(out_dict['ids'], axis=0)
+        images = torch.from_numpy(images)
+        out_dict['ids'] = torch.from_numpy(out_dict['ids'])
+        return images, out_dict
 
 
 def center_crop_arr(pil_image, image_size):
