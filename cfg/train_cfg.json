@@ -1,7 +1,7 @@
 {
     "data_dir": "./font_img",
     "num_tokens": 445,
-    "num_features": 64,
+    "num_features": 48,
     "diffusion_steps": 1000,
     "noise_schedule": "linear",
     "image_size": 128,

@@ -419,11 +419,7 @@ class UNetWithStyEncoderModel(nn.Module):
         )
 
         self.emb = nn.Embedding(num_tokens + 1, num_features)
-        self.emb_flatten = nn.Sequential(
-            Upsample(num_features, conv_resample, dims=dims, out_channels=num_features//2),
-            Upsample(num_features//2, conv_resample, dims=dims, out_channels=num_features//4),
-        )
-        self.content_encoder = ContentEncoder(num_features//4, model_channels, 2, 'in', 'relu', 'reflect')
+        self.content_encoder = ContentEncoder(num_features, model_channels, 2, 'in', 'relu', 'reflect')
 
         ch = input_ch = int(channel_mult[0] * model_channels)
         self.input_blocks = nn.ModuleList(
@@ -581,7 +577,6 @@ class UNetWithStyEncoderModel(nn.Module):
         y_emb = y_emb * y_mask
         y_emb = y_emb.sum(1)
         y_emb = y_emb.permute(0, 3, 1, 2).contiguous()
-        y_emb = self.emb_flatten(y_emb)
         img_embs = self.content_encoder(y_emb)
 
         h = x.type(self.dtype)

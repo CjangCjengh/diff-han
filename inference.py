@@ -67,15 +67,8 @@ def main():
             arr, sign = ids_encoder.encode_ids(ids)
             y.append(arr)
             y_mask.append(sign)
-    max_len = max([len(i) for i in y])
-    for i in range(len(y)):
-        temp = np.zeros((max_len - len(y[i]), y[i].shape[1], y[i].shape[2]), dtype=int)
-        y[i] = np.concatenate((y[i], temp), axis=0)
-        y_mask[i] = np.concatenate((y_mask[i], temp), axis=0)
     y = np.array(y)
     y_mask = np.array(y_mask)
-    y = torch.from_numpy(y).to(dist_util.dev())
-    y_mask = torch.from_numpy(y_mask).to(dist_util.dev())
 
     ch_idx = 0
     while ch_idx < len(y):

@@ -34,8 +34,6 @@ def model_and_diffusion_defaults():
         resblock_updown=False,
         use_fp16=False,
         use_new_attention_order=False,
-        num_tokens=445,
-        num_features=64,
     )
     res.update(diffusion_defaults())
     return res

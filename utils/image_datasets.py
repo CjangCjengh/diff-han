@@ -27,7 +27,7 @@ def load_data(
     if not data_dir:
         raise ValueError("unspecified data directory")
     
-    ids_encoder = IDSEncoder(ids_path, glyph_path, 32)
+    ids_encoder = IDSEncoder(ids_path, glyph_path, 128)
     
     all_files = _list_image_files_recursively(data_dir)
     all_files = [f for f in all_files if chr(int(os.path.basename(f).split('.')[0], 16)) in ids_encoder.ids_dict]
