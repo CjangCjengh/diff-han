@@ -29,8 +29,13 @@ def load_data(
     
     ids_encoder = IDSEncoder(ids_path, glyph_path, 32)
     
-    all_files = _list_image_files_recursively(data_dir)
-    all_files = [f for f in all_files if chr(int(os.path.basename(f).split('.')[0], 16)) in ids_encoder.ids_dict]
+    all_files = []
+    for i, d in enumerate(data_dir):
+        files = _list_image_files_recursively(d)
+        files = [f for f in files if chr(int(os.path.basename(f).split('.')[0], 16)) in ids_encoder.ids_dict]
+        logger.log(f"found {len(files)} files in {d}")
+        for f in files:
+            all_files.append((f, i))
 
     dataset = ImageDataset(
         image_size,
@@ -40,38 +45,16 @@ def load_data(
         random_crop=random_crop,
         random_flip=random_flip,
         ids_encoder=ids_encoder,
+        multi_font=len(data_dir) > 1,
     )
-
-    def collate_fn(batch):
-        arr_list = []
-        y_list = []
-        y_mask_list = []
-        max_len = max([len(y) for arr, y, y_mask in batch])
-        for arr, y, y_mask in batch:
-            arr_list.append(arr)
-            if max_len > len(y):
-                temp = np.zeros((max_len - len(y), y.shape[1], y.shape[2]), dtype=int)
-                y_list.append(np.concatenate((y, temp), axis=0))
-                y_mask_list.append(np.concatenate((y_mask, temp), axis=0))
-            else:
-                y_list.append(y)
-                y_mask_list.append(y_mask)
-        arr = np.stack(arr_list)
-        y = np.stack(y_list)
-        y_mask = np.stack(y_mask_list)
-        arr = torch.from_numpy(arr)
-        out_dict = {}
-        out_dict['y'] = torch.from_numpy(y)
-        out_dict['y_mask'] = torch.from_numpy(y_mask)
-        return arr, out_dict
 
     if deterministic:
         loader = DataLoader(
-            dataset, batch_size=batch_size, shuffle=False, num_workers=1, drop_last=True, collate_fn=collate_fn
+            dataset, batch_size=batch_size, shuffle=False, num_workers=1, drop_last=True, collate_fn=dataset.collate_fn
         )
     else:
         loader = DataLoader(
-            dataset, batch_size=batch_size, shuffle=True, num_workers=1, drop_last=True, collate_fn=collate_fn
+            dataset, batch_size=batch_size, shuffle=True, num_workers=1, drop_last=True, collate_fn=dataset.collate_fn
         )
     while True:
         yield from loader
@@ -99,6 +82,7 @@ class ImageDataset(Dataset):
         random_crop=False,
         random_flip=True,
         ids_encoder=None,
+        multi_font=False,
     ):
         super().__init__()
         self.resolution = resolution
@@ -106,12 +90,13 @@ class ImageDataset(Dataset):
         self.random_crop = random_crop
         self.random_flip = random_flip
         self.ids_encoder = ids_encoder
+        self.multi_font = multi_font
 
     def __len__(self):
         return len(self.local_images)
 
     def __getitem__(self, idx):
-        path = self.local_images[idx]
+        path, style = self.local_images[idx]
         with open(path, "rb") as f:
             pil_image = Image.open(f)
             pil_image.load()
@@ -128,7 +113,34 @@ class ImageDataset(Dataset):
         arr = arr.astype(np.float32) / 127.5 - 1
         y, y_mask = self.ids_encoder.encode_char(chr(int(os.path.basename(path).split('.')[0], 16)))
 
-        return np.transpose(arr, [2, 0, 1]), y, y_mask
+        return np.transpose(arr, [2, 0, 1]), y, y_mask, style
+    
+    def collate_fn(self, batch):
+        arr_list = []
+        y_list = []
+        y_mask_list = []
+        style_list = []
+        max_len = max([len(y) for arr, y, y_mask, style in batch])
+        for arr, y, y_mask, style in batch:
+            arr_list.append(arr)
+            style_list.append(style)
+            if max_len > len(y):
+                temp = np.zeros((max_len - len(y), y.shape[1], y.shape[2]), dtype=int)
+                y_list.append(np.concatenate((y, temp), axis=0))
+                y_mask_list.append(np.concatenate((y_mask, temp), axis=0))
+            else:
+                y_list.append(y)
+                y_mask_list.append(y_mask)
+        arr = np.stack(arr_list)
+        y = np.stack(y_list)
+        y_mask = np.stack(y_mask_list)
+        arr = torch.from_numpy(arr)
+        out_dict = {}
+        out_dict['y'] = torch.from_numpy(y)
+        out_dict['y_mask'] = torch.from_numpy(y_mask)
+        if self.multi_font:
+            out_dict['style'] = torch.from_numpy(np.stack(style_list))
+        return arr, out_dict
 
 
 def center_crop_arr(pil_image, image_size):

@@ -37,6 +37,9 @@ def main():
     gen_txt_file = cfg['gen_txt_file']
     img_save_path = cfg['img_save_path']
     batch_size = cfg['batch_size']
+    num_fonts = cfg['num_fonts']
+    if num_fonts > 1:
+        nth_font = cfg['nth_font']
 
     dist_util.setup_dist()
 
@@ -82,6 +85,8 @@ def main():
         model_kwargs = {}
         model_kwargs['y'] = y[ch_idx:ch_idx+batch_size]
         model_kwargs['y_mask'] = y_mask[ch_idx:ch_idx+batch_size]
+        if num_fonts > 1:
+            model_kwargs['style'] = torch.tensor([nth_font] * len(model_kwargs['y'])).to(dist_util.dev())
 
         sample_fn = (
             diffusion.p_sample_loop if not cfg['use_ddim'] else diffusion.ddim_sample_loop

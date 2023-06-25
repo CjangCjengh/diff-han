@@ -23,6 +23,7 @@ def main():
     train_step = cfg['train_step']
     ids_path = cfg['ids_path']
     glyph_path = cfg['glyph_path']
+    cfg['num_fonts'] = len(cfg['data_dir'])
 
     dist_util.setup_dist()
 

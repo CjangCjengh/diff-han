@@ -36,6 +36,7 @@ def model_and_diffusion_defaults():
         use_new_attention_order=False,
         num_tokens=445,
         num_features=64,
+        num_fonts=1,
     )
     res.update(diffusion_defaults())
     return res
@@ -47,6 +48,7 @@ def create_model_and_diffusion(
     num_res_blocks,
     num_tokens,
     num_features,
+    num_fonts,
     channel_mult,
     num_heads,
     num_head_channels,
@@ -72,6 +74,7 @@ def create_model_and_diffusion(
         num_res_blocks,
         num_tokens,
         num_features,
+        num_fonts,
         channel_mult=channel_mult,
         learn_sigma=learn_sigma,
         use_checkpoint=use_checkpoint,
@@ -103,6 +106,7 @@ def create_model(
     num_res_blocks,
     num_tokens,
     num_features,
+    num_fonts=1,
     channel_mult="",
     learn_sigma=False,
     use_checkpoint=False,
@@ -142,6 +146,7 @@ def create_model(
         num_res_blocks=num_res_blocks,
         num_tokens=num_tokens,
         num_features=num_features,
+        num_fonts=num_fonts,
         attention_resolutions=tuple(attention_ds),
         dropout=dropout,
         channel_mult=channel_mult,

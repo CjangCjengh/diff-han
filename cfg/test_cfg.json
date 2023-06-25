@@ -2,6 +2,7 @@
     "dropout": 0.1,
     "num_tokens": 445,
     "num_features": 64,
+    "num_fonts": 1,
     "diffusion_steps": 1000,
     "noise_schedule": "linear",
     "image_size": 128,
@@ -13,6 +14,7 @@
     "timestep_respacing": "ddim25",
     "model_path": "./trained_models/model001000.pt",
     "gen_txt_file": "./gen_ids.txt",
+    "nth_font": 0,
     "img_save_path": "./result",
     "ids_path": "./han_ids.txt",
     "glyph_path": "./glyphs.json"

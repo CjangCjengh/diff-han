@@ -1,5 +1,5 @@
 {
-    "data_dir": "./font_img",
+    "data_dir": ["./font_img/ipamjm"],
     "num_tokens": 445,
     "num_features": 64,
     "diffusion_steps": 1000,
