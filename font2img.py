@@ -56,6 +56,8 @@ if __name__ == '__main__':
                 img = draw_single_char(char, src_font, args.img_size)
             except:
                 continue
+            if np.sum(np.array(img)) == args.img_size*args.img_size*3*255:
+                continue
             path_full = os.path.join(args.save_path, font_name)
             if not os.path.exists(path_full):
                 os.mkdir(path_full)
